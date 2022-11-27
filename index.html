@@ -1,3 +1,6 @@
+<head>
+  <link rel="manifest" href="manifest.webmanifest">
+</head>
 <body>
   <canvas id="render-canvas"></canvas>
   <style>
@@ -38,6 +41,9 @@
       // box.position.x -= 0.1;
       // box.scaling.y += 0.3;
       box.rotation.x += 0.1;
+    });
+    window.addEventListener('beforeinstallprompt', (event) =>{
+      event.preventDefault();
     });
   </script>
 </body>
