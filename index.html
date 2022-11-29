@@ -3,40 +3,69 @@
 </head>
 <body>
   <canvas id="render-canvas"></canvas>
+  <div id="user-interface">
+    <img id="restart-btn" src="assets/restart.png" />
+  </div>
   <style>
-    body, #render-canvas {
+    body, #render-canvas, #user-interface {
       margin: 0;
       width: 100%;
       height: 100vh;
+    }
+    #restart-btn {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 200px;
     }
   </style>
 
   <script src="http://cdn.babylonjs.com/babylon.js"></script>
   <script>
+    // СОЗДАНИЕ МИРА
     let canvas = window.document.querySelector('#render-canvas');
     // Создание движка
     let engine = new BABYLON.Engine(canvas);
     // Создание сцены и присоеденение ее к движку
     let scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+    scene.clearColor = new BABYLON.Color3(0.3, 0.3, 0.3);
     // Создание камеры
-    let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, -10), scene);
+    let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 10, -12), scene);
+    camera.setTarget(new BABYLON.Vector3(0, 0, 0));
     // Создание света
     let light = new BABYLON.PointLight('light', new BABYLON.Vector3(10, 10, 0), scene);
-    // Создание куба
-    let box = new BABYLON.Mesh.CreateBox('box', 2, scene);
-    box.rotation.x = -0.2;
-    box.rotation.y = -0.4;
-    // Создание материала
+    light.intensity = 0.2;
+    // Создание генератора теней
+    let shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
+    // Создание платформы и материала для нее
+    let platform = new BABYLON.MeshBuilder.CreateBox('box', {
+      width: 6,
+      height: 0.1,
+      depth: 6,
+      wrap: true
+    }, scene);
     let boxMaterial = new BABYLON.StandardMaterial('material', scene);
-    boxMaterial.emissiveColor = new BABYLON.Color3(0, 0.58, 0.86);
-    box.material = boxMaterial;
+    boxMaterial.emissiveTexture = new BABYLON.Texture('assets/platform.png');
+    platform.material = boxMaterial;
+    platform.receiveShadows = true;
+    // Создание мяча и материала для него 
+    let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
+      diametr: 1
+    }, scene);
+    ball.position.y = 0.6;
+    let ballMaterial = new BABYLON.StandardMaterial('material', scene);
+    ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
+    ball.material = ballMaterial;
+    shadowGenerator.getShadowMap().renderList.push(ball);
 
+    // АЛГОРИТМ
+    let restartBtn = window.document.querySelector('#restart-btn');
     engine.runRenderLoop(()=>{
       scene.render();
-    })
+    });
 
     // ОБРАБОТЧИКИ СОБЫТИЙ
+    restartBtn.addEventListener('click', () => window.location.reload());
     window.addEventListener('touchend', () => {
       // box.position.x -= 0.1;
       // box.scaling.y += 0.3;
