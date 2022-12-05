@@ -20,7 +20,8 @@
     }
   </style>
 
-  <script src="http://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/cannon.js"></script>
   <script>
     // СОЗДАНИЕ МИРА
     let canvas = window.document.querySelector('#render-canvas');
@@ -29,6 +30,7 @@
     // Создание сцены и присоеденение ее к движку
     let scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+    scene.enablePhysics();
     // Создание камеры
     let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 10, -12), scene);
     camera.setTarget(new BABYLON.Vector3(0, 0, 0));
@@ -38,38 +40,77 @@
     // Создание генератора теней
     let shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
     // Создание платформы и материала для нее
-    let platform = new BABYLON.MeshBuilder.CreateBox('box', {
-      width: 6,
-      height: 0.1,
-      depth: 6,
-      wrap: true
-    }, scene);
-    let boxMaterial = new BABYLON.StandardMaterial('material', scene);
-    boxMaterial.emissiveTexture = new BABYLON.Texture('assets/platform.png');
-    platform.material = boxMaterial;
-    platform.receiveShadows = true;
+    const createPlatform = (zPos) => {
+      let platform = new BABYLON.MeshBuilder.CreateBox('box', {
+        width: 6,
+        height: 0.1,
+        depth: 6,
+        wrap: true
+      }, scene);
+      let boxMaterial = new BABYLON.StandardMaterial('material', scene);
+      boxMaterial.emissiveTexture = new BABYLON.Texture('assets/platform.png');
+      platform.material = boxMaterial;
+      platform.receiveShadows = true;
+      platform.physicsImpostor = new BABYLON.PhysicsImpostor(
+        platform,
+        BABYLON.PhysicsImpostor.BoxImpostor,
+        {
+          mass: 0
+        },
+        scene
+      );
+      platform.position.z = zPos;
+    }
+    for(let i = 0; i < 10; i++){
+      createPlatform(i*6);
+    }
     // Создание мяча и материала для него 
     let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
       diametr: 1
     }, scene);
-    ball.position.y = 0.6;
+    ball.position.y = 3.6;
     let ballMaterial = new BABYLON.StandardMaterial('material', scene);
     ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
     ball.material = ballMaterial;
     shadowGenerator.getShadowMap().renderList.push(ball);
+    ball.physicsImpostor = new BABYLON.PhysicsImpostor(
+      ball,
+      BABYLON.PhysicsImpostor.SphereImpostor,
+      {
+        mass: 1,
+        // restitution: 4,
+        friction: 5
+      },
+      scene
+    )
 
     // АЛГОРИТМ
     let restartBtn = window.document.querySelector('#restart-btn');
     engine.runRenderLoop(()=>{
+      camera.position.z = ball.getAbsolutePosition().z - 12;
+      light.position.z = ball.getAbsolutePosition().z;
       scene.render();
     });
 
     // ОБРАБОТЧИКИ СОБЫТИЙ
     restartBtn.addEventListener('click', () => window.location.reload());
+    window.addEventListener('touchstart', (event) => {
+      let x = event.touches[0].screenX;
+      if(x > (window.screen.width/2)){
+        ball.physicsImpostor.applyImpulse(
+          new BABYLON.Vector3(10, 0, 0),
+          ball.getAbsolutePosition()
+        );
+      }else{
+        ball.physicsImpostor.applyImpulse(
+          new BABYLON.Vector3(-10, 0, 0),
+          ball.getAbsolutePosition()
+        );        
+      }
+    });
     window.addEventListener('touchend', () => {
-      // box.position.x -= 0.1;
-      // box.scaling.y += 0.3;
-      box.rotation.x += 0.1;
+      ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, 5));
+      ball.physicsImpostor.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
     });
     window.addEventListener('beforeinstallprompt', (event) =>{
       event.preventDefault();
