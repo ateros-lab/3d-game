@@ -64,6 +64,44 @@
     for(let i = 0; i < 10; i++){
       createPlatform(i*6);
     }
+    // Создание препятствий
+    let lastRand = 0;
+    let boxArray = [];
+    const createBox = (xPos, zPos) => {
+      let box = new BABYLON.MeshBuilder.CreateBox('box', {
+        width: 2,
+        height: 1,
+        depth: 1
+      }, scene);
+      box.position = new BABYLON.Vector3(xPos, 0.6, 3+zPos);
+      box.material = new BABYLON.StandardMaterial('material', scene);
+      box.material.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+      box.physicsImpostor = new BABYLON.PhysicsImpostor(
+        box,
+        BABYLON.PhysicsImpostor.BoxImpostor,
+        {
+          mass: 0
+        },
+        scene
+      );
+      shadowGenerator.getShadowMap().renderList.push(box);
+      box.receiveShadows = true;
+      boxArray.push(box);
+    }
+    const createBoxRow = (zPos) => {
+      let rand = Math.floor(Math.random() * 3);
+      while(rand === lastRand){
+        rand = Math.floor(Math.random() * 3);
+      }
+      lastRand = rand;
+      for(let i = 0; i < 3; i++){
+        if(i === rand) continue;
+        createBox((i*2)-2, zPos);
+      }
+    }
+    for(let i = 0; i < 10; i++){
+      createBoxRow(i*6);
+    }
     // Создание мяча и материала для него 
     let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
       diametr: 1
@@ -82,10 +120,17 @@
         friction: 5
       },
       scene
-    )
+    );
 
     // АЛГОРИТМ
     let restartBtn = window.document.querySelector('#restart-btn');
+    scene.registerBeforeRender(()=>{
+      for(let i = 0; i < boxArray.length; i++){
+        if(ball.intersectsMesh(boxArray[i], true)){
+          boxArray[i].material.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
+        }
+      }
+    });
     engine.runRenderLoop(()=>{
       camera.position.z = ball.getAbsolutePosition().z - 12;
       light.position.z = ball.getAbsolutePosition().z;
@@ -110,7 +155,7 @@
     });
     window.addEventListener('touchend', () => {
       ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, 5));
-      ball.physicsImpostor.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+      ball.physicsImpostor.setAngularVelocity(new BABYLON.Vector3(0, 0, 0,));
     });
     window.addEventListener('beforeinstallprompt', (event) =>{
       event.preventDefault();
