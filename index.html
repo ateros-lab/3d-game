@@ -7,7 +7,15 @@
     <img id="restart-btn" class="a-pos" src="assets/restart.png" />
     <img id="coin-img" class="a-pos" src="assets/coin.png" />
     <p id="coin-score" class="a-pos">0</p>
-    <p id="score" class="a-pos">0</p>
+    <div id="play-screen">
+      <p id="score" class="a-pos">0</p>
+    </div>
+    <div id="game-over-screen">
+      <p id="game-over-info" class="game-over-p">GAME OVER</p>
+      <p id="best-score" class="game-over-p">BEST: 0</p>
+      <p id="now-score" class="game-over-p">NOW: 0</p>
+      <p id="tap-info" class="game-over-p">Tap to restart</p>
+    </div>
   </div>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap');
@@ -18,6 +26,7 @@
       font-family: 'Black Ops One', cursive;
       user-select: none;
     }
+    /* PLAY SCREEN */
     .a-pos {
       position: absolute;
     }
@@ -41,6 +50,63 @@
       width: 100%;
       text-align: center;
       font-size: 8vh;
+    }
+    /* GAME OVER SCREEN */
+    #game-over-screen {
+      display: none;
+    }
+    .game-over-p {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+    }
+    #game-over-info {
+      top: 10vh;
+      font-size: 7vh;
+    }
+    #best-score {
+      top: 30vh;
+      font-size: 6vh;
+    }
+    #now-score {
+      top: 40vh;
+      font-size: 6vh;
+    }
+    #tap-info {
+      top: 70vh;
+      font-size: 4vh;
+      animation-name: tap-info_anim;
+      animation-duration: 2s;
+      animation-iteration-count: infinite;
+      /* урок #8
+        дз - создать анимацию для тега #coin-score:
+             когда игрок подбирает монетку цвет текста
+             у тега должен плавно измениться на белый 
+             (либо какой-то другой),
+             а через 1 секунду снова стать черным
+             ** подсказки
+             coinScore.style.animationName = 'coin-score_anim'
+             coinScore.style.animation = 'none'
+             setTimeout(()=>{}, 1000)
+      */
+    }
+    /* Анимации */
+    @keyframes tap-info_anim {
+      from{
+        font-size: 4vh;
+        top: 70vh;
+        opacity: 0;
+      }
+      to{
+        font-size: 4vh;
+        top: 70vh;
+        opacity: 0;
+      }
+      50%{
+        font-size: 4.5vh;
+        top: 69.5vh;
+        opacity: 1;
+      }
     }
   </style>
 
@@ -181,11 +247,21 @@
     );
 
     // АЛГОРИТМ
+    // Извлечение тегов из разметки
     let restartBtn = window.document.querySelector('#restart-btn');
     let scoreInfo = window.document.querySelector('#score');
     let coinScoreInfo = window.document.querySelector('#coin-score');
+    let playScreen = window.document.querySelector('#play-screen');
+    let gameOverScreen = window.document.querySelector('#game-over-screen');
+    let bestScoreInfo = window.document.querySelector('#best-score');
+    let nowScoreInfo = window.document.querySelector('#now-score');
+    // Константы
+    const PLAY = 'play';
+    const GAME_OVER = 'game_over';
+    // Переменные
     let score = 0;
     let coinScore = 0;
+    let state = PLAY;
     // Функции
     const saveCoinScore = () => {
       window.localStorage.setItem('coinScore', coinScore);
@@ -204,12 +280,36 @@
       ;
       coinScoreInfo.innerText = coinScore;
     }
+    const saveBestScore = () => {
+      window.localStorage.setItem('bestScore', score);
+    }
+    const loadBestScore = () => {
+      return (window.localStorage.getItem('bestScore'))
+        ? window.localStorage.getItem('bestScore')
+        : 0
+      ;
+    }
+    const setGameOverScreen = () => {
+      state = GAME_OVER;
+      playScreen.style.display = 'none';
+      gameOverScreen.style.display = 'block';
+      let bestScore = loadBestScore();
+      if(score > bestScore){
+        saveBestScore();
+        bestScore = score;
+        bestScoreInfo.style.color = '#0003ad';
+        nowScoreInfo.style.color = '#0003ad';
+      }
+      bestScoreInfo.innerText = `BEST: ${bestScore}`;
+      nowScoreInfo.innerText = `NOW: ${score}`;
+    }
     loadCoinScore();
     // Встроенные функции Babylon.js
     scene.registerBeforeRender(()=>{
       for(let i = 0; i < boxArray.length; i++){
         if(ball.intersectsMesh(boxArray[i], true)){
           boxArray[i].material.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
+          setGameOverScreen();
         }
       }
       for(let i = 0; i < coinArray.length; i++){
@@ -238,17 +338,21 @@
     // ОБРАБОТЧИКИ СОБЫТИЙ
     restartBtn.addEventListener('click', () => window.location.reload());
     window.addEventListener('touchstart', (event) => {
-      let x = event.touches[0].screenX;
-      if(x > (window.screen.width/2)){
-        ball.physicsImpostor.applyImpulse(
-          new BABYLON.Vector3(10, 0, 0),
-          ball.getAbsolutePosition()
-        );
+      if(state !== GAME_OVER){
+        let x = event.touches[0].screenX;
+        if(x > (window.screen.width/2)){
+          ball.physicsImpostor.applyImpulse(
+            new BABYLON.Vector3(10, 0, 0),
+            ball.getAbsolutePosition()
+          );
+        }else{
+          ball.physicsImpostor.applyImpulse(
+            new BABYLON.Vector3(-10, 0, 0),
+            ball.getAbsolutePosition()
+          );        
+        }
       }else{
-        ball.physicsImpostor.applyImpulse(
-          new BABYLON.Vector3(-10, 0, 0),
-          ball.getAbsolutePosition()
-        );        
+        window.location.reload();
       }
     });
     window.addEventListener('touchend', () => {
