@@ -113,6 +113,7 @@
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/cannon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+  <script src="https://cdn.babylonjs.com/materialsLibrary/babylon.waterMaterial.js"></script>
   <script>
     // СОЗДАНИЕ МИРА
     let canvas = window.document.querySelector('#render-canvas');
@@ -128,8 +129,29 @@
       cameraContrast: 2.5,
       cameraExposure: 1
     });
+    // Создание неба
+    let skybox = new BABYLON.MeshBuilder.CreateBox('skyBox', {size: 1000}, scene);
+    let skyboxMaterial = new BABYLON.StandardMaterial('skyBox', scene);
+    skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture('assets/environment/TropicalSunnyDay', scene);
+    skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+    skyboxMaterial.backFaceCulling = false;// не убирать внутренние грани
+    skybox.material = skyboxMaterial;
+    // Создание воды
+    let waterGround = new BABYLON.MeshBuilder.CreateGround('ground', {width: 512, height: 512}, scene);
+    let waterMaterial = new BABYLON.WaterMaterial('water', scene);
+    waterMaterial.bumpTexture = new BABYLON.Texture('assets/environment/waterbump.png', scene);
+    waterMaterial.addToRenderList(skybox);
+    waterGround.material = waterMaterial;
+    waterGround.position = new BABYLON.Vector3(0, -3, 0);
+    // Создание поверхности морского дна
+    let ground = new BABYLON.MeshBuilder.CreateGround('ground', {width: 30, height: 30}, scene);
+    let groundMaterial = new BABYLON.StandardMaterial('material', scene);
+    groundMaterial.emissiveTexture = new BABYLON.Texture('assets/environment/ground.jpg', scene);
+    ground.material = groundMaterial;
+    ground.position = new BABYLON.Vector3(0, -5, 13);
+    waterMaterial.addToRenderList(ground);
     // Создание камеры
-    let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 10, -15), scene);
+    let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 8, -15), scene);
     camera.setTarget(new BABYLON.Vector3(0, 0, 0));
     // Создание света
     let light = new BABYLON.PointLight('light', new BABYLON.Vector3(10, 10, 0), scene);
@@ -328,13 +350,14 @@
           scoreInfo.innerText = score;
         }
       }
-    });
-    engine.runRenderLoop(()=>{
+      skybox.position.z = ball.getAbsolutePosition().z;
+      waterGround.position.z = ball.getAbsolutePosition().z;
+      ground.position.z = ball.getAbsolutePosition().z+13;
       camera.position.z = ball.getAbsolutePosition().z - 12;
       light.position.z = ball.getAbsolutePosition().z;
-      scene.render();
     });
-
+    engine.runRenderLoop(()=>scene.render());
+    
     // ОБРАБОТЧИКИ СОБЫТИЙ
     restartBtn.addEventListener('click', () => window.location.reload());
     window.addEventListener('touchstart', (event) => {
