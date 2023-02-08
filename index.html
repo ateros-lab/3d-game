@@ -151,7 +151,7 @@
     ground.position = new BABYLON.Vector3(0, -5, 13);
     waterMaterial.addToRenderList(ground);
     // Создание камеры
-    let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 8, -15), scene);
+    let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 9, -16), scene);
     camera.setTarget(new BABYLON.Vector3(0, 0, 0));
     // Создание света
     let light = new BABYLON.PointLight('light', new BABYLON.Vector3(10, 10, 0), scene);
@@ -179,9 +179,6 @@
         scene
       );
       platform.position.z = zPos;
-    }
-    for(let i = 0; i < 10; i++){
-      createPlatform(i*6);
     }
     // Создание монетки
     let coinArray = [];
@@ -213,7 +210,7 @@
       }, scene);
       box.position = new BABYLON.Vector3(xPos, 0.6, 3+zPos);
       box.material = new BABYLON.StandardMaterial('material', scene);
-      box.material.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+      box.material.emissiveColor = new BABYLON.Color3(0.4, 0.4, 0.4);
       box.physicsImpostor = new BABYLON.PhysicsImpostor(
         box,
         BABYLON.PhysicsImpostor.BoxImpostor,
@@ -245,12 +242,9 @@
         createBox((i*2)-2, zPos);
       }
     }
-    for(let i = 0; i < 10; i++){
-      createBoxRow(i*6);
-    }
     // Создание мяча и материала для него 
     let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
-      diametr: 1
+      diameter: 1
     }, scene);
     ball.position.y = 5.6;
     let ballMaterial = new BABYLON.StandardMaterial('material', scene);
@@ -267,6 +261,11 @@
       },
       scene
     );
+    for(let i = 0; i < 6; i++){
+      createPlatform(i*6);
+      if(i === 0) continue;
+      createBoxRow(i*6);
+    }
 
     // АЛГОРИТМ
     // Извлечение тегов из разметки
@@ -284,7 +283,14 @@
     let score = 0;
     let coinScore = 0;
     let state = PLAY;
+    let lastPoint = 0;
+    let nextPoint = pointArray[0].x;
+    let speed = 10;
     // Функции
+    const newRoadBlock = (zPos) => {
+      createPlatform(zPos*6);
+      createBoxRow(zPos*6);
+    }
     const saveCoinScore = () => {
       window.localStorage.setItem('coinScore', coinScore);
       // Сохранение данных
@@ -345,9 +351,14 @@
       }
       for(let i = 0; i < pointArray.length; i++){
         if(ball.intersectsPoint(pointArray[i])){
+          lastPoint = pointArray[i].x;
+          nextPoint = pointArray[i+1].x;
           pointArray.splice(i, 1);
           score++;
           scoreInfo.innerText = score;
+          if(pointArray.length <= 4){
+            newRoadBlock((pointArray[pointArray.length-1].z+3)/6);
+          }
         }
       }
       skybox.position.z = ball.getAbsolutePosition().z;
@@ -360,27 +371,24 @@
     
     // ОБРАБОТЧИКИ СОБЫТИЙ
     restartBtn.addEventListener('click', () => window.location.reload());
-    window.addEventListener('touchstart', (event) => {
-      if(state !== GAME_OVER){
-        let x = event.touches[0].screenX;
-        if(x > (window.screen.width/2)){
-          ball.physicsImpostor.applyImpulse(
-            new BABYLON.Vector3(10, 0, 0),
-            ball.getAbsolutePosition()
-          );
-        }else{
-          ball.physicsImpostor.applyImpulse(
-            new BABYLON.Vector3(-10, 0, 0),
-            ball.getAbsolutePosition()
-          );        
-        }
-      }else{
-        window.location.reload();
-      }
-    });
     window.addEventListener('touchend', () => {
-      ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, 5));
-      ball.physicsImpostor.setAngularVelocity(new BABYLON.Vector3(0, 0, 0,));
+      if(state === GAME_OVER) window.location.reload();
+      else{
+        if(ball.getAbsolutePosition().z === 0){
+          ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, speed));
+        }else{
+          if(lastPoint > nextPoint){
+            // влево
+            ball.translate(new BABYLON.Vector3(-2, 0, 0), 1, BABYLON.Space.WORLD);
+          }else if(lastPoint < nextPoint){
+            // вправо
+            ball.translate(new BABYLON.Vector3(2, 0, 0), 1, BABYLON.Space.WORLD);
+          }
+          speed += speed * 0.01;
+          ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, speed));
+          ball.physicsImpostor.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+        }
+      }
     });
     window.addEventListener('beforeinstallprompt', (event) =>{
       event.preventDefault();
