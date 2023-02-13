@@ -6,15 +6,15 @@
   <div id="user-interface">
     <img id="restart-btn" class="a-pos" src="assets/restart.png" />
     <img id="coin-img" class="a-pos" src="assets/coin.png" />
-    <p id="coin-score" class="a-pos">0</p>
+    <p id="coin-score" class="a-pos text-gradient">0</p>
     <div id="play-screen">
-      <p id="score" class="a-pos">0</p>
+      <p id="score" class="a-pos text-gradient">0</p>
     </div>
     <div id="game-over-screen">
-      <p id="game-over-info" class="game-over-p">GAME OVER</p>
-      <p id="best-score" class="game-over-p">BEST: 0</p>
-      <p id="now-score" class="game-over-p">NOW: 0</p>
-      <p id="tap-info" class="game-over-p">Tap to restart</p>
+      <p id="game-over-info" class="game-over-p text-gradient">GAME OVER</p>
+      <p id="best-score" class="game-over-p text-gradient">BEST: 0</p>
+      <p id="now-score" class="game-over-p text-gradient">NOW: 0</p>
+      <p id="tap-info" class="game-over-p text-gradient">Tap to restart</p>
     </div>
   </div>
   <style>
@@ -34,11 +34,13 @@
       right: 0;
       bottom: 0;
       width: 200px;
+      display: none;
     }
     #coin-img {
       top: 2vh;
       right: 2vh;
       width: 5vh;
+      opacity: 0.9;
     }
     #coin-score {
       top: -5vh;
@@ -50,6 +52,12 @@
       width: 100%;
       text-align: center;
       font-size: 8vh;
+    }
+    .text-gradient {
+      background-image: linear-gradient(#ff4885, 60%, #000b6b);
+      color: transparent;
+      background-clip: text;
+      -webkit-background-clip: text;
     }
     /* GAME OVER SCREEN */
     #game-over-screen {
@@ -190,7 +198,7 @@
         scene,
         (meshArray) => {
           let coin = meshArray[0];
-          coin.scaling = new BABYLON.Vector3(0.08, 0.08, 0.08);
+          coin.scaling = new BABYLON.Vector3(0.06, 0.06, 0.06);
           coin.position = pos;
           shadowGenerator.addShadowCaster(coin);
           coin.receiveShadows = true;
@@ -202,15 +210,32 @@
     let lastRand = 0;
     let boxArray = [];
     let pointArray = [];
+    let colorsArray = [
+      [0.1, 0.2, 0.35],
+      [0.15, 0.25, 0.4],
+      [0.2, 0.3, 0.45],
+      [0.25, 0.35, 0.5],
+      [0.3, 0.4, 0.55],
+    ];
+    let colorPos = 0;
+    let colorDir = 1; // -1
     const createBox = (xPos, zPos) => {
-      let box = new BABYLON.MeshBuilder.CreateBox('box', {
-        width: 2,
-        height: 1,
-        depth: 1
-      }, scene);
-      box.position = new BABYLON.Vector3(xPos, 0.6, 3+zPos);
+      let box = new BABYLON.MeshBuilder.CreateCylinder('cone',
+      {
+        // diameterTop: 0,
+        // diameterBottom: 1.5,
+        diameter: 1.5,
+        height: 1.8,
+        arc: 0.5,
+        enclose: true
+      },scene);
+      box.position = new BABYLON.Vector3(xPos, 0, 3+zPos);
       box.material = new BABYLON.StandardMaterial('material', scene);
-      box.material.emissiveColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+      box.material.emissiveColor = new BABYLON.Color3(
+        colorsArray[colorPos][0],
+        colorsArray[colorPos][1],
+        colorsArray[colorPos][2],
+      );
       box.physicsImpostor = new BABYLON.PhysicsImpostor(
         box,
         BABYLON.PhysicsImpostor.BoxImpostor,
@@ -222,6 +247,10 @@
       shadowGenerator.getShadowMap().renderList.push(box);
       box.receiveShadows = true;
       boxArray.push(box);
+      box.rotate(new BABYLON.Vector3(0, 0, 1), Math.PI * 0.5, BABYLON.Space.WORLD);
+      box.rotate(new BABYLON.Vector3(1, 0, 0), Math.PI * 0.5, BABYLON.Space.WORLD);
+      box.hasVertexAlpha = true;
+      box.visibility = 0.9;
     }
     const createBoxRow = (zPos) => {
       let rand = Math.floor(Math.random() * 3);
@@ -232,7 +261,7 @@
       for(let i = 0; i < 3; i++){
         if(i === rand) {
           if(Math.random() < 0.5) {// вероятность 50%
-            createCoin(new BABYLON.Vector3((i*2)-2, 1, 3+zPos));
+            createCoin(new BABYLON.Vector3((i*2)-2, 0.65, 3+zPos));
           }else{
             // создание вашей модели
           }
@@ -241,10 +270,13 @@
         }
         createBox((i*2)-2, zPos);
       }
+      if(colorPos >= colorsArray.length - 1) colorDir = -1;
+      if(colorPos <= 0) colorDir = 1;
+      colorPos += colorDir;
     }
     // Создание мяча и материала для него 
     let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
-      diameter: 1
+      diameter: 0.8
     }, scene);
     ball.position.y = 5.6;
     let ballMaterial = new BABYLON.StandardMaterial('material', scene);
@@ -325,8 +357,8 @@
       if(score > bestScore){
         saveBestScore();
         bestScore = score;
-        bestScoreInfo.style.color = '#0003ad';
-        nowScoreInfo.style.color = '#0003ad';
+        bestScoreInfo.style.backgroundImage = 'linear-gradient(#ff4885, 80%, #000b6b)';
+        nowScoreInfo.style.backgroundImage = 'linear-gradient(#ff4885, 80%, #000b6b)';
       }
       bestScoreInfo.innerText = `BEST: ${bestScore}`;
       nowScoreInfo.innerText = `NOW: ${score}`;
@@ -334,6 +366,7 @@
     loadCoinScore();
     // Встроенные функции Babylon.js
     scene.registerBeforeRender(()=>{
+      if(ball.getAbsolutePosition().y <= 0) setGameOverScreen();
       for(let i = 0; i < boxArray.length; i++){
         if(ball.intersectsMesh(boxArray[i], true)){
           boxArray[i].material.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
