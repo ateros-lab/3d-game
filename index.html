@@ -1,5 +1,6 @@
 <head>
   <link rel="manifest" href="manifest.webmanifest">
+  <meta name="viewport" content="user-scalable=no">
 </head>
 <body>
   <canvas id="render-canvas"></canvas>
@@ -26,6 +27,12 @@
       font-family: 'Black Ops One', cursive;
       user-select: none;
     }
+    body {
+      position: fixed;
+    }
+    #render-canvas {
+      outline: none;
+    }
     /* PLAY SCREEN */
     .a-pos {
       position: absolute;
@@ -34,7 +41,6 @@
       right: 0;
       bottom: 0;
       width: 200px;
-      display: none;
     }
     #coin-img {
       top: 2vh;
@@ -167,6 +173,7 @@
     // Создание генератора теней
     let shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
     // Создание платформы и материала для нее
+    let platformArray = [];
     const createPlatform = (zPos) => {
       let platform = new BABYLON.MeshBuilder.CreateBox('box', {
         width: 6,
@@ -187,6 +194,7 @@
         scene
       );
       platform.position.z = zPos;
+      platformArray.push(platform);
     }
     // Создание монетки
     let coinArray = [];
@@ -226,8 +234,8 @@
         // diameterBottom: 1.5,
         diameter: 1.5,
         height: 1.8,
-        arc: 0.5,
-        enclose: true
+        // arc: 0.5,
+        // enclose: true
       },scene);
       box.position = new BABYLON.Vector3(xPos, 0, 3+zPos);
       box.material = new BABYLON.StandardMaterial('material', scene);
@@ -248,7 +256,6 @@
       box.receiveShadows = true;
       boxArray.push(box);
       box.rotate(new BABYLON.Vector3(0, 0, 1), Math.PI * 0.5, BABYLON.Space.WORLD);
-      box.rotate(new BABYLON.Vector3(1, 0, 0), Math.PI * 0.5, BABYLON.Space.WORLD);
       box.hasVertexAlpha = true;
       box.visibility = 0.9;
     }
@@ -274,29 +281,27 @@
       if(colorPos <= 0) colorDir = 1;
       colorPos += colorDir;
     }
-    // Создание мяча и материала для него 
-    let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
-      diameter: 0.8
-    }, scene);
-    ball.position.y = 5.6;
-    let ballMaterial = new BABYLON.StandardMaterial('material', scene);
-    ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
-    ball.material = ballMaterial;
-    shadowGenerator.getShadowMap().renderList.push(ball);
-    ball.physicsImpostor = new BABYLON.PhysicsImpostor(
-      ball,
-      BABYLON.PhysicsImpostor.SphereImpostor,
-      {
-        mass: 1,
-        // restitution: 4,
-        friction: 5
-      },
-      scene
-    );
-    for(let i = 0; i < 6; i++){
-      createPlatform(i*6);
-      if(i === 0) continue;
-      createBoxRow(i*6);
+    // Создание мяча и материала для него
+    const createBall = () => {
+      let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
+        diameter: 0.8
+      }, scene);
+      ball.position.y = 5.6;
+      let ballMaterial = new BABYLON.StandardMaterial('material', scene);
+      ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
+      ball.material = ballMaterial;
+      shadowGenerator.getShadowMap().renderList.push(ball);
+      ball.physicsImpostor = new BABYLON.PhysicsImpostor(
+        ball,
+        BABYLON.PhysicsImpostor.SphereImpostor,
+        {
+          mass: 1,
+          // restitution: 4,
+          friction: 5
+        },
+        scene
+      );
+      return ball;
     }
 
     // АЛГОРИТМ
@@ -312,13 +317,38 @@
     const PLAY = 'play';
     const GAME_OVER = 'game_over';
     // Переменные
+    let ball = null;
     let score = 0;
     let coinScore = 0;
     let state = PLAY;
     let lastPoint = 0;
-    let nextPoint = pointArray[0].x;
+    let nextPoint = 0;
     let speed = 10;
     // Функции
+    const clearArray = (array, isMesh = true) => {
+      if(isMesh) array.map(elem => elem.dispose());
+      while (array.length) array.pop();
+    }
+    const deleteGameObjects = () => {
+      ball.dispose();
+      clearArray(coinArray);
+      clearArray(boxArray);
+      clearArray(platformArray);
+      clearArray(pointArray, false);
+    }
+    const createGameObjects = () => {
+      for(let i = 0; i < 6; i++){
+        createPlatform(i*6);
+        if(i === 0) continue;
+        createBoxRow(i*6);
+      }
+      lastPoint = 0;
+      nextPoint = pointArray[0].x;
+      ball = createBall();
+      score = 0;
+      scoreInfo.innerText = `${score}`;
+      speed = 10;
+    }
     const newRoadBlock = (zPos) => {
       createPlatform(zPos*6);
       createBoxRow(zPos*6);
@@ -364,6 +394,7 @@
       nowScoreInfo.innerText = `NOW: ${score}`;
     }
     loadCoinScore();
+    createGameObjects();
     // Встроенные функции Babylon.js
     scene.registerBeforeRender(()=>{
       if(ball.getAbsolutePosition().y <= 0) setGameOverScreen();
@@ -405,8 +436,13 @@
     // ОБРАБОТЧИКИ СОБЫТИЙ
     restartBtn.addEventListener('click', () => window.location.reload());
     window.addEventListener('touchend', () => {
-      if(state === GAME_OVER) window.location.reload();
-      else{
+      if(state === GAME_OVER){
+        gameOverScreen.style.display = 'none';
+        deleteGameObjects();
+        createGameObjects();
+        playScreen.style.display = 'block';
+        state = PLAY;
+      }else{
         if(ball.getAbsolutePosition().z === 0){
           ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, speed));
         }else{
