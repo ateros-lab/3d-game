@@ -8,6 +8,10 @@
     <img id="restart-btn" class="a-pos" src="assets/restart.png" />
     <img id="coin-img" class="a-pos" src="assets/coin.png" />
     <p id="coin-score" class="a-pos text-gradient">0</p>
+    <div id="nav-bar">
+      <img id="shop-icon" src="assets/shop/shop-icon.png"/>
+      <img id="back-icon" src="assets/shop/back-icon.png"/>
+    </div>
     <div id="play-screen">
       <p id="score" class="a-pos text-gradient">0</p>
     </div>
@@ -16,6 +20,15 @@
       <p id="best-score" class="game-over-p text-gradient">BEST: 0</p>
       <p id="now-score" class="game-over-p text-gradient">NOW: 0</p>
       <p id="tap-info" class="game-over-p text-gradient">Tap to restart</p>
+    </div>
+    <div id="shop-screen">
+      <img id="left-arrow" src="assets/shop/left-arrow.png"/>
+      <img id="right-arrow" src="assets/shop/right-arrow.png"/>
+      <div id="price-block">
+        <img id="lock-icon" src="assets/shop/lock-icon.png"/>
+        <span id="price" class="text-gradient">10</span>
+        <img id="price-coin-img" src="assets/coin.png" />
+      </div>
     </div>
   </div>
   <style>
@@ -104,6 +117,51 @@
              coinScore.style.animation = 'none'
              setTimeout(()=>{}, 1000)
       */
+    }
+    /* SHOP SCREEN */
+    #shop-screen {
+      display: none;
+    }
+    #nav-bar, #shop-icon, #back-icon {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #shop-icon, #back-icon {
+      width: 6vh;
+      padding: 1vh;
+      display: none;
+    }
+    #left-arrow, #right-arrow {
+      position: absolute;
+      top: 60vh;
+      width: 10vh;
+    }
+    #left-arrow {
+      left: 0;
+    }
+    #right-arrow {
+      right: 0;
+    }
+    #price-block {
+      position: absolute;
+      top: 60vh;
+      left: 0;
+      width: 40%;
+      margin-left: 30%;
+      font-size: 7vh;
+      text-align: center;
+    }
+    #lock-icon {
+      position: relative;
+      width: 10vh;
+      padding-bottom: 3vh;
+    }
+    #price-coin-img {
+      position: relative;
+      bottom: 0;
+      right: 0;
+      width: 5vh;
     }
     /* Анимации */
     @keyframes tap-info_anim {
@@ -212,6 +270,7 @@
           shadowGenerator.addShadowCaster(coin);
           coin.receiveShadows = true;
           coinArray.push(coin);
+          shopIcon.style.display = 'block';
         }
       );
     }    
@@ -273,7 +332,7 @@
           }else{
             // создание вашей модели
           }
-          pointArray.push(new BABYLON.Vector3((i*2)-2, 1, 3+zPos));
+          pointArray.push(new BABYLON.Vector3((i*2)-2, 0, 3+zPos));
           continue;
         }
         createBox((i*2)-2, zPos);
@@ -283,7 +342,7 @@
       colorPos += colorDir;
     }
     // Создание мяча и материала для него
-    const createBall = () => {
+    const createBall = (needPhysics = true) => {
       let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
         diameter: 0.8
       }, scene);
@@ -292,16 +351,18 @@
       ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
       ball.material = ballMaterial;
       shadowGenerator.getShadowMap().renderList.push(ball);
-      ball.physicsImpostor = new BABYLON.PhysicsImpostor(
-        ball,
-        BABYLON.PhysicsImpostor.SphereImpostor,
-        {
-          mass: 1,
-          // restitution: 4,
-          friction: 5
-        },
-        scene
-      );
+      if(needPhysics) {
+        ball.physicsImpostor = new BABYLON.PhysicsImpostor(
+          ball,
+          BABYLON.PhysicsImpostor.SphereImpostor,
+          {
+            mass: 1,
+            // restitution: 4,
+            friction: 5
+          },
+          scene
+        );
+      }
       return ball;
     }
 
@@ -314,6 +375,9 @@
     let gameOverScreen = window.document.querySelector('#game-over-screen');
     let bestScoreInfo = window.document.querySelector('#best-score');
     let nowScoreInfo = window.document.querySelector('#now-score');
+    let shopIcon = window.document.querySelector('#shop-icon');
+    let backIcon = window.document.querySelector('#back-icon');
+    let shopScreen = window.document.querySelector('#shop-screen');
     // Константы
     const PLAY = 'play';
     const GAME_OVER = 'game_over';
@@ -325,10 +389,31 @@
     let lastPoint = 0;
     let nextPoint = 0;
     let speed = 10;
+    let demoArray = [];
+    let demoTimer = null;
     // Функции
     const clearArray = (array, isMesh = true) => {
       if(isMesh) array.map(elem => elem.dispose());
       while (array.length) array.pop();
+    }
+    const deleteDemoObjects = () => {
+      clearArray(demoArray);
+      clearInterval(demoTimer);
+    }
+    const createDemoObjects = () => {
+      for(let i = 0; i < 2; i++){
+        let ball = createBall(false);
+        ball.position = new BABYLON.Vector3(0, i*4, i*2);
+        ball.scaling = new BABYLON.Vector3(2, 2, 2);
+        demoArray.push(ball);
+      }
+      demoTimer = setInterval(()=>{
+        demoArray[1].rotate(
+          new BABYLON.Vector3(-1, 0, -1),
+          Math.PI * (engine.getDeltaTime()/1000),
+          BABYLON.Space.WORLD
+        )
+      }, 20);
     }
     const deleteGameObjects = () => {
       ball.dispose();
@@ -436,14 +521,32 @@
     
     // ОБРАБОТЧИКИ СОБЫТИЙ
     restartBtn.addEventListener('click', () => window.location.reload());
-    window.addEventListener('touchend', () => {
+    shopIcon.addEventListener('click', () => {
+      shopIcon.style.display = 'none';
+      backIcon.style.display = 'block';
+      playScreen.style.display = 'none';
+      shopScreen.style.display = 'block';
+      deleteGameObjects();
+      createDemoObjects();
+    });
+    backIcon.addEventListener('click', () => {
+      backIcon.style.display = 'none'; 
+      shopIcon.style.display = 'block'; 
+      shopScreen.style.display = 'none';
+      playScreen.style.display = 'block';
+      deleteDemoObjects();
+      createGameObjects();    
+    });    
+    window.addEventListener('touchend', (event) => {
       if(state === GAME_OVER){
         gameOverScreen.style.display = 'none';
+        bestScoreInfo.style.backgroundImage = 'linear-gradient(#ff4885, 60%, #000b6b)';
+        nowScoreInfo.style.backgroundImage = 'linear-gradient(#ff4885, 60%, #000b6b)';        
         deleteGameObjects();
         createGameObjects();
         playScreen.style.display = 'block';
         state = PLAY;
-      }else{
+      }else if(event.changedTouches[0].screenY > 0.3 * window.screen.height){
         if(ball.getAbsolutePosition().z === 0){
           ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, speed));
         }else{
