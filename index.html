@@ -22,8 +22,8 @@
       <p id="tap-info" class="game-over-p text-gradient">Tap to restart</p>
     </div>
     <div id="shop-screen">
-      <img id="left-arrow" src="assets/shop/left-arrow.png"/>
-      <img id="right-arrow" src="assets/shop/right-arrow.png"/>
+      <img id="left-arrow" onclick="arrowClick(-1)" src="assets/shop/left-arrow.png"/>
+      <img id="right-arrow" onclick="arrowClick(1)" src="assets/shop/right-arrow.png"/>
       <div id="price-block">
         <img id="lock-icon" src="assets/shop/lock-icon.png"/>
         <span id="price" class="text-gradient">10</span>
@@ -327,7 +327,9 @@
       lastRand = rand;
       for(let i = 0; i < 3; i++){
         if(i === rand) {
-          if(Math.random() < 0.5) {// вероятность 50%
+          if(zPos === 30){
+            createCoin(new BABYLON.Vector3((i*2)-2, 0.65, 3+zPos));
+          } else if(Math.random() < 0.5) {// вероятность 50%
             createCoin(new BABYLON.Vector3((i*2)-2, 0.65, 3+zPos));
           }else{
             // создание вашей модели
@@ -342,13 +344,13 @@
       colorPos += colorDir;
     }
     // Создание мяча и материала для него
-    const createBall = (needPhysics = true) => {
+    const createBall = (textureNum, needPhysics = true) => {
       let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
         diameter: 0.8
       }, scene);
       ball.position.y = 5.6;
       let ballMaterial = new BABYLON.StandardMaterial('material', scene);
-      ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
+      ballMaterial.emissiveTexture = new BABYLON.Texture(`assets/shop/ball${textureNum}.jpg`, scene);
       ball.material = ballMaterial;
       shadowGenerator.getShadowMap().renderList.push(ball);
       if(needPhysics) {
@@ -378,9 +380,11 @@
     let shopIcon = window.document.querySelector('#shop-icon');
     let backIcon = window.document.querySelector('#back-icon');
     let shopScreen = window.document.querySelector('#shop-screen');
+    let priceBlock = window.document.querySelector('#price-block');
     // Константы
     const PLAY = 'play';
     const GAME_OVER = 'game_over';
+    const IN_MOVE = 'in_move';
     // Переменные
     let ball = null;
     let score = 0;
@@ -391,7 +395,36 @@
     let speed = 10;
     let demoArray = [];
     let demoTimer = null;
+    let shopState = ['1', '0', '0', '0', '0']; //1,0,0,0,0
+    let priceArray = [30, 40, 50, 60, 70];
+    let activeTexture = 0;
+    let demoPos = 0;
     // Функции
+    const updatePriceBlock = () => {
+      (shopState[demoPos] === '1')
+        ? priceBlock.style.opacity = '0'
+        : priceBlock.style.opacity = '1';
+      window.document.querySelector('#price').innerText = priceArray[demoPos];
+    }
+    const arrowClick = (dir) => {
+      demoPos += dir;
+      if(demoPos < 0) demoPos = 4
+      else if(demoPos > 4) demoPos = 0;
+      demoArray[0].material.emissiveTexture = new BABYLON.Texture(`assets/shop/ball${demoPos}.jpg`,scene);
+      updatePriceBlock();
+    }
+    const saveShopState = () => {
+      window.localStorage.setItem('shopState', shopState.join(','));
+      window.localStorage.setItem('activeTexture', activeTexture);
+    }
+    const loadShopState = () => {
+      shopState = (window.localStorage.getItem('shopState'))
+        ? window.localStorage.getItem('shopState').split(',')
+        : shopState;
+      activeTexture = (window.localStorage.getItem('activeTexture'))
+        ? Number.parseInt(window.localStorage.getItem('activeTexture'))
+        : activeTexture;
+    }
     const clearArray = (array, isMesh = true) => {
       if(isMesh) array.map(elem => elem.dispose());
       while (array.length) array.pop();
@@ -402,7 +435,7 @@
     }
     const createDemoObjects = () => {
       for(let i = 0; i < 2; i++){
-        let ball = createBall(false);
+        let ball = createBall(activeTexture, false);
         ball.position = new BABYLON.Vector3(0, i*4, i*2);
         ball.scaling = new BABYLON.Vector3(2, 2, 2);
         demoArray.push(ball);
@@ -414,6 +447,7 @@
           BABYLON.Space.WORLD
         )
       }, 20);
+      updatePriceBlock();
     }
     const deleteGameObjects = () => {
       ball.dispose();
@@ -430,7 +464,7 @@
       }
       lastPoint = 0;
       nextPoint = pointArray[0].x;
-      ball = createBall();
+      ball = createBall(activeTexture);
       score = 0;
       scoreInfo.innerText = `${score}`;
       speed = 10;
@@ -479,6 +513,7 @@
       bestScoreInfo.innerText = `BEST: ${bestScore}`;
       nowScoreInfo.innerText = `NOW: ${score}`;
     }
+    loadShopState();
     loadCoinScore();
     createGameObjects();
     // Встроенные функции Babylon.js
@@ -520,14 +555,32 @@
     engine.runRenderLoop(()=>scene.render());
     
     // ОБРАБОТЧИКИ СОБЫТИЙ
-    restartBtn.addEventListener('click', () => window.location.reload());
+    restartBtn.addEventListener('click', () => window.location.reload());    
+    priceBlock.addEventListener('click', () => {
+      if(shopState[demoPos] === '0'){
+        if(priceArray[demoPos] <= coinScore){
+          coinScore -= priceArray[demoPos];
+          coinScoreInfo.innerText = coinScore;
+          saveCoinScore();
+          shopState[demoPos] = '1';
+          saveShopState();
+          updatePriceBlock();
+        }
+      }else{
+        activeTexture = demoPos;
+        saveShopState();
+        demoArray[1].material.emissiveTexture = new BABYLON.Texture(`assets/shop/ball${activeTexture}.jpg`, scene);
+      }
+    });
     shopIcon.addEventListener('click', () => {
-      shopIcon.style.display = 'none';
-      backIcon.style.display = 'block';
-      playScreen.style.display = 'none';
-      shopScreen.style.display = 'block';
-      deleteGameObjects();
-      createDemoObjects();
+      if(state !== IN_MOVE){
+        shopIcon.style.display = 'none';
+        backIcon.style.display = 'block';
+        playScreen.style.display = 'none';
+        shopScreen.style.display = 'block';
+        deleteGameObjects();
+        createDemoObjects();
+      }
     });
     backIcon.addEventListener('click', () => {
       backIcon.style.display = 'none'; 
@@ -539,6 +592,7 @@
     });    
     window.addEventListener('touchend', (event) => {
       if(state === GAME_OVER){
+        event.preventDefault();
         gameOverScreen.style.display = 'none';
         bestScoreInfo.style.backgroundImage = 'linear-gradient(#ff4885, 60%, #000b6b)';
         nowScoreInfo.style.backgroundImage = 'linear-gradient(#ff4885, 60%, #000b6b)';        
@@ -546,9 +600,12 @@
         createGameObjects();
         playScreen.style.display = 'block';
         state = PLAY;
+        shopIcon.style.opacity = '1';
       }else if(event.changedTouches[0].screenY > 0.3 * window.screen.height){
         if(ball.getAbsolutePosition().z === 0){
           ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, speed));
+          state = IN_MOVE;
+          shopIcon.style.opacity = '0.7';
         }else{
           if(lastPoint > nextPoint){
             // влево
