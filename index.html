@@ -11,6 +11,7 @@
     <div id="nav-bar">
       <img id="shop-icon" src="assets/shop/shop-icon.png"/>
       <img id="back-icon" src="assets/shop/back-icon.png"/>
+      <img id="install-icon" src="assets/install-icon.png" />
     </div>
     <div id="play-screen">
       <p id="score" class="a-pos text-gradient">0</p>
@@ -30,6 +31,10 @@
         <img id="price-coin-img" src="assets/coin.png" />
       </div>
     </div>
+  </div>
+  <div id="qr-code">
+    <h1>You need a smartphone to play this game</h1>
+    <img src="assets/frame.png"/>
   </div>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap');
@@ -122,15 +127,24 @@
     #shop-screen {
       display: none;
     }
-    #nav-bar, #shop-icon, #back-icon {
+    #nav-bar, #shop-icon, #back-icon, #install-icon {
       position: absolute;
       top: 0;
       left: 0;
     }
-    #shop-icon, #back-icon {
+    #shop-icon, #back-icon, #install-icon {
       width: 6vh;
       padding: 1vh;
       display: none;
+    }
+    #install-icon {
+      left: 7vh;
+      display: block;
+    }
+    @media all and (display-mode: fullscreen) {
+      #install-icon {
+        display: none;
+      }
     }
     #left-arrow, #right-arrow {
       position: absolute;
@@ -162,6 +176,25 @@
       bottom: 0;
       right: 0;
       width: 5vh;
+    }
+    /* QR-CODE */
+    #qr-code {
+      width: 100%;
+      text-align: center;
+      margin-top: 5vh;
+      display: none;
+    }
+    #qr-code img {
+      width: 30%;
+      margin: auto;
+    }
+    @media screen and (min-device-width: 800px){
+      #render-canvas, #user-interface {
+        display: none;
+      }
+      #qr-code {
+        display: block;
+      }
     }
     /* Анимации */
     @keyframes tap-info_anim {
@@ -381,6 +414,7 @@
     let backIcon = window.document.querySelector('#back-icon');
     let shopScreen = window.document.querySelector('#shop-screen');
     let priceBlock = window.document.querySelector('#price-block');
+    let installIcon = window.document.querySelector('#install-icon');
     // Константы
     const PLAY = 'play';
     const GAME_OVER = 'game_over';
@@ -424,6 +458,7 @@
       activeTexture = (window.localStorage.getItem('activeTexture'))
         ? Number.parseInt(window.localStorage.getItem('activeTexture'))
         : activeTexture;
+      demoPos = activeTexture;
     }
     const clearArray = (array, isMesh = true) => {
       if(isMesh) array.map(elem => elem.dispose());
@@ -587,6 +622,7 @@
       shopIcon.style.display = 'block'; 
       shopScreen.style.display = 'none';
       playScreen.style.display = 'block';
+      demoPos = activeTexture;
       deleteDemoObjects();
       createGameObjects();    
     });    
@@ -620,8 +656,17 @@
         }
       }
     });
+    
+    // УСТАНОВКА
+    let defaultInstallEvent = null;
     window.addEventListener('beforeinstallprompt', (event) =>{
       event.preventDefault();
+      defaultInstallEvent = event;
+    });
+    installIcon.addEventListener('click', () => {
+      defaultInstallEvent.prompt();
+      installIcon.style.display = 'none';
+      defaultInstallEvent = null;
     });
   </script>
 </body>
